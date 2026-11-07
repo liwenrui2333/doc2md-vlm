@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "doc2md-vlm"
+version = "0.1.0"
+description = "Convert PDF/PPTX into Markdown with chart evidence and vision-model readings"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "Liwenrui" }]
+keywords = ["pdf", "pptx", "markdown", "converter", "vision", "vlm", "ollama", "ocr"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Text Processing :: Markup :: Markdown",
+    "Environment :: Console",
+]
+dependencies = [
+    "pymupdf>=1.24.14",
+    "python-pptx>=1.0.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+doc2md = "doc2md:main"
+
+[project.urls]
+Homepage = "https://github.com/liwenrui2333/doc2md-vlm"
+Issues = "https://github.com/liwenrui2333/doc2md-vlm/issues"
+
+[tool.setuptools]
+py-modules = ["doc2md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

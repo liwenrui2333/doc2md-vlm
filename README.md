@@ -4,7 +4,7 @@ Convert PDF and PPTX files into Markdown **plus visual evidence**, so charts don
 
 Plain text extractors flatten a dashboard into a column of orphaned numbers. This tool keeps the picture: PDF pages are rendered to PNG, PPTX native charts are exported to CSV with their series intact, and an optional vision model reads each page and writes down what the chart actually shows.
 
-Works fully offline with a local Ollama model, or against any OpenAI-compatible endpoint.
+Works fully offline with a local Ollama model, or against any OpenAI-compatible endpoint. Conversion without `--local-llm` makes no network calls at all — see [Data and privacy](SECURITY.md).
 
 ## Features
 
@@ -17,16 +17,25 @@ Works fully offline with a local Ollama model, or against any OpenAI-compatible 
 
 ## Requirements
 
-- Python 3.9+ (tested on 3.11)
-- For PPTX slide images: Windows with Microsoft PowerPoint installed (uses PowerPoint COM automation). Everything else works on macOS and Linux.
+- Python 3.9 or newer. CI tests 3.9, 3.12 and 3.13 on Ubuntu, macOS and Windows.
+- For PPTX slide images: Windows with Microsoft PowerPoint installed (uses PowerPoint COM automation). On macOS and Linux, text and chart CSVs still export and slide images are skipped with a warning.
 
 ## Install
 
 ```bash
 git clone https://github.com/liwenrui2333/doc2md-vlm.git
 cd doc2md-vlm
-pip install -r requirements.txt
+pip install -e .
 ```
+
+This installs a `doc2md` command, so both of these work:
+
+```bash
+doc2md input.pdf --charts
+python doc2md.py input.pdf --charts
+```
+
+Prefer no install? `pip install -r requirements.txt` and use `python doc2md.py`.
 
 ## Quick start
 
@@ -239,7 +248,24 @@ The reason is now specific — unreachable endpoint, timeout, unpulled model, wr
 PowerPoint is not installed or not reachable via COM. A warning is recorded in `metadata.json`. On non-Windows systems this is expected; text and chart CSVs still export.
 
 **`FutureWarning: The fitz API is deprecated` on stderr**
-Cosmetic — comes from PyMuPDF 1.24+. Output is unaffected.
+Cosmetic. The code tries `import pymupdf` first and falls back to `fitz` only for PyMuPDF older than 1.24.14. Output is unaffected.
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+python -m pytest -q
+```
+
+Tests build their own PDF and PPTX fixtures at runtime, so the repo carries no binary files. CI runs the suite and a CLI smoke test on Ubuntu, macOS and Windows across Python 3.9, 3.12 and 3.13.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request — the generated Markdown, CSVs and `metadata.json` are treated as a contract.
+
+## Privacy
+
+Conversion is local and never touches the network unless you pass `--local-llm`. With it, page images go to the endpoint you chose and nowhere else. Details, including what `metadata.json` records, are in [SECURITY.md](SECURITY.md).
+
+To report a vulnerability, open a [security advisory](https://github.com/liwenrui2333/doc2md-vlm/security/advisories/new) rather than a public issue.
 
 ## License
 
