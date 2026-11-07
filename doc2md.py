@@ -349,6 +349,11 @@ def convert_pptx(path: Path, out_dir: Path, opts: ConvertOptions) -> ConvertResu
     assets_dir = out_dir / "assets"
     charts_dir = out_dir / "charts"
     prs = Presentation(str(path))
+    md: list[str] = [f"# {path.stem}", "", f"Source: `{path}`", ""]
+    assets: list[str] = []
+    chart_files: list[str] = []
+    warnings: list[str] = []
+
     slide_images = export_pptx_slides_to_images(path, assets_dir / "slides") if opts.charts or opts.local_llm else []
     slide_image_by_index = {i + 1: image for i, image in enumerate(slide_images)}
     if (opts.charts or opts.local_llm) and not slide_images:
@@ -358,11 +363,6 @@ def convert_pptx(path: Path, out_dir: Path, opts: ConvertOptions) -> ConvertResu
             else "could not export slides; is PowerPoint installed?"
         )
         warnings.append(f"Slide images unavailable ({reason}). Text and chart CSV still exported.")
-
-    md: list[str] = [f"# {path.stem}", "", f"Source: `{path}`", ""]
-    assets: list[str] = []
-    chart_files: list[str] = []
-    warnings: list[str] = []
 
     for slide_idx, slide in enumerate(prs.slides, start=1):
         md.extend([f"## Slide {slide_idx}", ""])

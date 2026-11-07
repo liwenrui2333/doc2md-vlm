@@ -137,6 +137,26 @@ def test_pptx_slide_text_is_kept(pptx: Path, capsys):
     assert "Ad spend vs leads" in md
 
 
+def test_pptx_without_slide_images_still_converts(pptx: Path, capsys, monkeypatch):
+    """Linux and macOS have no PowerPoint COM, so no slide images are produced.
+
+    Regression test: this path used to raise UnboundLocalError because the
+    warning was appended before `warnings` was initialised.
+    """
+    monkeypatch.setattr(doc2md, "export_pptx_slides_to_images", lambda p, d: [])
+    assert run([str(pptx), "--charts"]) == 0
+    capsys.readouterr()
+
+    out = pptx.parent / "deck_doc2md"
+    meta = json.loads((out / "metadata.json").read_text(encoding="utf-8"))
+    assert any("Slide images unavailable" in w for w in meta["warnings"])
+    # Text and chart data must still come through.
+    md = (out / "deck.md").read_text(encoding="utf-8")
+    assert "Ad spend vs leads" in md
+    assert "### Chart 1: Channel efficiency" in md
+    assert list((out / "charts").glob("*.csv"))
+
+
 # --- batch and output directory -------------------------------------------------
 
 
