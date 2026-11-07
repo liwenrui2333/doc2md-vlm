@@ -2,16 +2,17 @@
 
 Convert PDF and PPTX files into Markdown **plus visual evidence**, so charts don't disappear the way they do in plain text extraction.
 
-Plain text extractors flatten a dashboard into a column of orphaned numbers. This tool keeps the picture: PDF pages are rendered to PNG, PPTX native charts are exported to CSV with their series intact, and an optional local vision model reads each page and writes down what the chart actually shows.
+Plain text extractors flatten a dashboard into a column of orphaned numbers. This tool keeps the picture: PDF pages are rendered to PNG, PPTX native charts are exported to CSV with their series intact, and an optional vision model reads each page and writes down what the chart actually shows.
 
-Runs fully offline. No API keys, no cloud calls.
+Works fully offline with a local Ollama model, or against any OpenAI-compatible endpoint.
 
 ## Features
 
 - **PDF** — extract text and render every page to PNG at a configurable DPI.
 - **PPTX** — extract slide text, embedded images, and native chart data as CSV plus a Markdown table.
-- **Local VLM reading** — optionally send page images to a local Ollama vision model, which returns chart type, axis labels, visible numbers, trends, and a one-line conclusion.
+- **Vision model reading** — send page images to a local Ollama model or any OpenAI-compatible API; get back chart type, axis labels, visible numbers, trends, and a one-line conclusion.
 - **Batch mode** — point it at a folder.
+- **Actionable errors** — a missing model, a dead endpoint, or a bad API key produces a message naming the fix, not a stack trace.
 - **Stable output shape** — every conversion yields a Markdown file, an `assets/` folder, a `charts/` folder, and a `metadata.json` manifest.
 
 ## Requirements
@@ -128,19 +129,29 @@ Check `warnings` after a batch run — truncated page counts and unreadable char
 | `-o`, `--output-dir` | `<input>_doc2md/` | Output directory |
 | `--batch` | off | Treat input as a folder and convert every `.pdf` / `.pptx` inside |
 | `--charts` | off | Render pages/slides to PNG; for PPTX also export chart series to CSV |
-| `--local-llm` | off | Ask a local vision model to read each rendered page |
-| `--vlm-provider` | `ollama` | Vision backend. Only `ollama` is implemented |
-| `--vlm-url` | `http://127.0.0.1:11434/api/chat` | Endpoint; env `DOC2MD_VLM_URL` |
-| `--vlm-model` | `gemma4-vision-thinking:12b` | Model name; env `DOC2MD_VLM_MODEL`, then `OLLAMA_MODEL` |
+| `--local-llm` | off | Ask a vision model to read each rendered page |
+| `--vlm-provider` | `ollama` | Vision backend: `ollama` (local) or `openai` (any OpenAI-compatible endpoint); env `DOC2MD_VLM_PROVIDER` |
+| `--vlm-url` | provider default | Endpoint; env `DOC2MD_VLM_URL`. See below for per-provider defaults |
+| `--vlm-model` | provider default | Model name; env `DOC2MD_VLM_MODEL` |
+| `--vlm-api-key` | empty | Key for the `openai` provider; env `DOC2MD_VLM_API_KEY` |
 | `--max-pages` | `120` | PDF page cap, `0` for no cap. Does not apply to PPTX |
 | `--dpi` | `160` | PDF render resolution |
 | `--timeout` | `90` | VLM request timeout in seconds |
 
-> **Set `--vlm-model` explicitly.** The built-in default is a placeholder that is not published on the Ollama registry, so `--local-llm` will fail until you pass a real model name. See below.
+When `--vlm-url` and `--vlm-model` are omitted they follow the provider:
 
-## Local vision model setup
+| Provider | Default URL | Default model |
+|---|---|---|
+| `ollama` | `http://127.0.0.1:11434/api/chat` | `qwen2.5vl:7b` |
+| `openai` | `https://api.openai.com/v1/chat/completions` | `gpt-4o-mini` |
 
-Any Ollama vision model with the `/api/chat` image API works. Verified against the Ollama registry:
+`DOC2MD_VLM_MODEL` wins over the provider default. `OLLAMA_MODEL` is deliberately **not** used — it is frequently set to a non-vision model, which fails silently on images.
+
+## Which model to use
+
+Run `python doc2md.py --help` at any time for the short version. Before a run, the tool checks your setup and prints a warning to stderr when the model is not installed, the API key is missing, or the model is not a known vision model.
+
+**Ollama (local, free).** Models verified to accept the `/api/chat` image payload:
 
 | Model | Size | Pull |
 |---|---|---|
@@ -148,11 +159,11 @@ Any Ollama vision model with the `/api/chat` image API works. Verified against t
 | `qwen2.5vl:3b` | 3 GB | `ollama pull qwen2.5vl:3b` |
 | `minicpm-v:8b` | 5.5 GB | `ollama pull minicpm-v:8b` |
 | `llama3.2-vision:11b` | 7.8 GB | `ollama pull llama3.2-vision:11b` |
+| `gemma4-vision-thinking:12b` | 7.6 GB | `ollama pull gemma4-vision-thinking:12b` |
 | `llava:7b` | 4.7 GB | `ollama pull llava:7b` |
 
-Then:
-
 ```bash
+ollama pull qwen2.5vl:7b
 python doc2md.py input.pdf --charts --local-llm --vlm-model qwen2.5vl:7b
 ```
 
@@ -162,9 +173,37 @@ Or set it once:
 export DOC2MD_VLM_MODEL=qwen2.5vl:7b     # PowerShell: $env:DOC2MD_VLM_MODEL="qwen2.5vl:7b"
 ```
 
+**OpenAI-compatible (cloud or self-hosted).** Any server implementing `POST /v1/chat/completions` with the `image_url` data-URL content part works — OpenAI, DeepSeek, Qwen DashScope compatible mode, vLLM, LM Studio, OpenRouter.
+
+```bash
+export DOC2MD_VLM_API_KEY=sk-...
+python doc2md.py input.pdf --charts --local-llm \
+  --vlm-provider openai --vlm-model gpt-4o-mini
+```
+
+Point `--vlm-url` at a different host to use a compatible server:
+
+```bash
+python doc2md.py input.pdf --charts --local-llm \
+  --vlm-provider openai \
+  --vlm-url http://127.0.0.1:1234/v1/chat/completions \
+  --vlm-model qwen2.5-vl-7b-instruct
+```
+
+Keyless local servers work too — leave `DOC2MD_VLM_API_KEY` unset; the `Authorization` header is simply omitted.
+
 The prompt asks the model to answer in Chinese and to describe chart type, title, axes, visible numbers, trend, anomalies, and one business conclusion — or, on a page with no chart, just the key visible evidence. It is instructed not to invent hidden data.
 
-**A VLM failure never fails the conversion.** The error text is written into the Markdown as `[VLM failed: ...]` and the rest of the document still converts.
+**A VLM failure never fails the conversion.** The reason and a fix hint are written into the Markdown as `[VLM failed: ...]`, followed by the setup steps for the provider you chose, and the rest of the document still converts. Typical output:
+
+```markdown
+[VLM failed: model 'qwen2.5vl:7b' is not pulled. Fix: ollama pull qwen2.5vl:7b]
+
+Local vision model setup:
+  1. Install Ollama: https://ollama.com/download
+  2. Pull a vision model: ollama pull qwen2.5vl:7b
+  ...
+```
 
 ## How it works
 
@@ -175,21 +214,29 @@ The prompt asks the model to answer in Chinese and to describe chart type, title
 ## Limitations
 
 - **PDF has no structural chart extraction.** `--charts` renders the page and, with `--local-llm`, adds a model reading. Only PPTX produces real chart data as CSV. The `charts` array in `metadata.json` is always empty for PDF.
-- **PPTX slide images are Windows + PowerPoint only.** On macOS or Linux, `--local-llm` is skipped for PPTX with a warning; text and chart CSVs still work.
+- **PPTX slide images are Windows + PowerPoint only.** On macOS or Linux, `--local-llm` is skipped for PPTX with a warning in `metadata.json`; text and chart CSVs still work.
 - **PDF text is flat.** Multi-column layouts and tables come out as reading-order lines, not reconstructed structure.
 - **No OCR.** Pages that are pure scans yield `[No extractable text on this page.]` — the page PNG is still written.
 - **`--max-pages` caps PDF only.** Long decks are converted in full.
 
 ## Troubleshooting
 
-**`ERROR: Input is a directory. Add --batch to convert supported files inside it.`**
-This is also what you get when the input path does not exist. Check the path first.
+Every error names the problem and the fix. The common ones:
+
+**`ERROR: Input not found: <path>`**
+The path does not exist. Check quoting; on Windows with a Chinese path, quote it or use forward slashes.
+
+**`ERROR: <path> is a directory. Add --batch ...`**
+The input is a folder. Add `--batch`, or point at a single file.
+
+**`WARNING: Model '...' is not installed in Ollama. Run: ollama pull ...`**
+The model is not pulled. Run the printed command, or pick another from the table above.
 
 **`[VLM failed: ...]` in the output**
-Usually Ollama is not running (`ollama serve`) or the model name is not pulled. Verify with `ollama list`. Connections to `127.0.0.1` bypass any system proxy, so a proxy setting is not the cause.
+The reason is now specific — unreachable endpoint, timeout, unpulled model, wrong content type, or 401. Each carries the fix. Note that calls to `127.0.0.1` bypass any system proxy, so a proxy setting is never the cause.
 
 **PPTX produces no slide PNGs**
-PowerPoint is not installed or not reachable via COM. Expected on non-Windows systems.
+PowerPoint is not installed or not reachable via COM. A warning is recorded in `metadata.json`. On non-Windows systems this is expected; text and chart CSVs still export.
 
 **`FutureWarning: The fitz API is deprecated` on stderr**
 Cosmetic — comes from PyMuPDF 1.24+. Output is unaffected.

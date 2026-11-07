@@ -1,7 +1,0 @@
-{
-  "vlm_provider": "ollama",
-  "vlm_url": "http://127.0.0.1:11434/api/chat",
-  "vlm_model": "gemma4-vision-thinking:12b",
-  "dpi": 160,
-  "max_pages": 120
-}
