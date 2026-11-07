@@ -100,8 +100,11 @@ def rel(path: Path, base: Path) -> str:
 
 
 def write_text(path: Path, text: str) -> None:
+    # newline="" keeps "\n" as-is on Windows; Path.write_text only gained the
+    # newline parameter in 3.10, and this project supports 3.9.
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8", newline="\n")
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        fh.write(text)
 
 
 def import_pymupdf():
