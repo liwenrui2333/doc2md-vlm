@@ -10,6 +10,10 @@ Plain text extractors flatten a dashboard into a column of orphaned numbers. Thi
 
 Works fully offline with a local Ollama model, or against any OpenAI-compatible endpoint. Conversion without `--local-llm` makes no network calls at all — see [Data and privacy](SECURITY.md).
 
+![PPTX in, Markdown with chart data out](docs/before-after.png)
+
+A four-slide deck goes in. A Markdown file comes out with the slide text, the chart's series values as a table **and** a linked CSV, plus every slide rendered to PNG. No screen recording, no copy-pasting numbers out of a screenshot.
+
 ## Features
 
 - **PDF** — extract text and render every page to PNG at a configurable DPI.
