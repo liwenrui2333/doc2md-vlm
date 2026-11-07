@@ -1,5 +1,9 @@
 # doc2md-vlm
 
+[![tests](https://github.com/liwenrui2333/doc2md-vlm/actions/workflows/tests.yml/badge.svg)](https://github.com/liwenrui2333/doc2md-vlm/actions/workflows/tests.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![python](https://img.shields.io/badge/python-3.9%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg)](https://github.com/liwenrui2333/doc2md-vlm/actions/workflows/tests.yml)
+
 Convert PDF and PPTX files into Markdown **plus visual evidence**, so charts don't disappear the way they do in plain text extraction.
 
 Plain text extractors flatten a dashboard into a column of orphaned numbers. This tool keeps the picture: PDF pages are rendered to PNG, PPTX native charts are exported to CSV with their series intact, and an optional vision model reads each page and writes down what the chart actually shows.
@@ -22,18 +26,22 @@ Works fully offline with a local Ollama model, or against any OpenAI-compatible 
 
 ## Install
 
+Not on PyPI yet. Install the latest release:
+
+```bash
+pip install git+https://github.com/liwenrui2333/doc2md-vlm.git@v0.1.0
+doc2md input.pdf --charts
+```
+
+Or work from a clone:
+
 ```bash
 git clone https://github.com/liwenrui2333/doc2md-vlm.git
 cd doc2md-vlm
 pip install -e .
 ```
 
-This installs a `doc2md` command, so both of these work:
-
-```bash
-doc2md input.pdf --charts
-python doc2md.py input.pdf --charts
-```
+Either way you get a `doc2md` command, and `python doc2md.py` works from a clone as well.
 
 Prefer no install? `pip install -r requirements.txt` and use `python doc2md.py`.
 
